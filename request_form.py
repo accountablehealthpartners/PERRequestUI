@@ -2,15 +2,20 @@ import streamlit as st
 import smtplib
 from email.message import EmailMessage
 from simple_salesforce import Salesforce, SalesforceLogin
-import os
 from datetime import datetime, timedelta
 import random
 
 # Salesforce credentials
-SF_USERNAME = os.getenv("SF_USERNAME")
-SF_PASSWORD = os.getenv("SF_PASSWORD")
-SF_SECURITY_TOKEN = os.getenv("SF_SECURITY_TOKEN")
+SF_USERNAME = st.secrets["sf"]["SF_USERNAME"]
+SF_PASSWORD = st.secrets["sf"]["SF_PASSWORD"]
+SF_SECURITY_TOKEN = st.secrets["sf"]["SF_SECURITY_TOKEN"]
 SF_DOMAIN = 'test'
+
+# Email and contact details
+ADMIN_EMAIL = "jaevkim@gmail.com"
+SENDER_EMAIL = "perrequestform@gmail.com"
+SENDER_PASSWORD = st.secrets["SENDER_PASSWORD"]
+CONTACT_ID = "003ca000003iJh6AAE"  # Contact ID for the admin where secret word will be stored
 
 # Connect to Salesforce
 try:
@@ -24,12 +29,6 @@ try:
     st.success("Connected to Salesforce successfully!")
 except Exception as e:
     st.error(f"Failed to connect to Salesforce: {e}")
-
-# Email and contact details
-ADMIN_EMAIL = "jaevkim@gmail.com"
-SENDER_EMAIL = "perrequestform@gmail.com"
-SENDER_PASSWORD = st.secrets["SENDER_PASSWORD"]
-CONTACT_ID = "003ca000003iJh6AAE"  # Contact ID for the admin where secret word will be stored
 
 # Function to generate a random secret word
 def generate_secret_word():
@@ -69,7 +68,7 @@ def send_email(new_secret_word):
 # Load current secret word from Salesforce
 current_secret_word, last_changed = load_secret_word()
 
-# If it's the first run or more than 3 months have passed, generate a new secret word
+# If it's the first run or more than 5 minutes have passed, generate a new secret word
 if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:10], '%Y-%m-%d') > timedelta(minutes=5)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce

@@ -1,5 +1,6 @@
 import streamlit as st
 import smtplib
+import imaplib
 from email.message import EmailMessage
 from simple_salesforce import Salesforce, SalesforceLogin
 import os
@@ -67,6 +68,38 @@ def save_secret_word(secret_word):
     except Exception as e:
         st.error(f"Failed to save secret word to Salesforce: {e}")
 
+# Function to delete all messages from the "Sent" folder
+def delete_sent_emails():
+    try:
+        # Connect to the Gmail IMAP server
+        imap_server = imaplib.IMAP4_SSL('imap.gmail.com')
+        imap_server.login(SENDER_EMAIL, SENDER_PASSWORD)
+
+        # Select the "Sent" folder
+        imap_server.select('"[Gmail]/Sent Mail"')
+
+        # Search for all emails in the "Sent" folder
+        result, data = imap_server.search(None, 'ALL')
+
+        if result == 'OK':
+            # Get the list of email IDs to delete
+            email_ids = data[0].split()
+
+            # Mark all emails for deletion
+            for email_id in email_ids:
+                imap_server.store(email_id, '+FLAGS', '\\Deleted')
+
+            # Permanently delete all marked emails
+            imap_server.expunge()
+            st.success("Deleted all emails from the 'Sent' folder.")
+        else:
+            st.error("Failed to retrieve sent emails for deletion.")
+
+        # Logout from the IMAP server
+        imap_server.logout()
+    except Exception as e:
+        st.error(f"Failed to delete sent emails: {str(e)}")
+
 # Function to send email notification to the administrator
 def send_email(new_secret_word):
     # Create email message object
@@ -89,6 +122,10 @@ def send_email(new_secret_word):
             server.login(smtp_email, smtp_password)
             server.send_message(message)
             st.success("Email sent successfully!")
+
+        # After sending the email, delete everything in the "Sent" folder
+        delete_sent_emails()
+
     except Exception as e:
         st.error(f"Failed to send email. Error: {str(e)}")
 

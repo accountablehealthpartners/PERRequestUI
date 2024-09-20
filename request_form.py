@@ -1,20 +1,19 @@
 import streamlit as st
+import smtplib
+from email.message import EmailMessage
 from simple_salesforce import Salesforce, SalesforceLogin
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+import random
 
-# Set the page title and icon - This should be placed at the top
-st.set_page_config(page_title="Request Form", page_icon="📝")
-
-# Salesforce credentials from environment variables
-SF_USERNAME = os.getenv("SF_USERNAME")  # No default value; ensure environment variable is set
+# Salesforce credentials
+SF_USERNAME = os.getenv("SF_USERNAME")
 SF_PASSWORD = os.getenv("SF_PASSWORD")
 SF_SECURITY_TOKEN = os.getenv("SF_SECURITY_TOKEN")
-SF_DOMAIN = 'test'  # Use 'test' if connecting to a Salesforce sandbox
+SF_DOMAIN = 'test'
 
 # Connect to Salesforce
 try:
-    # Attempt to log in to Salesforce using credentials from environment variables
     session_id, instance = SalesforceLogin(
         username=SF_USERNAME, 
         password=SF_PASSWORD, 
@@ -26,17 +25,63 @@ try:
 except Exception as e:
     st.error(f"Failed to connect to Salesforce: {e}")
 
-# Secret word password
-SECRET_WORD = "your_secret_word"  # Replace with your actual secret word
+# Email and contact details
+ADMIN_EMAIL = "jaevkim@gmail.com"
+SENDER_EMAIL = "perrequestform@gmail.com"
+SENDER_PASSWORD = "your_app_password_here"  # Replace with your App Password
+CONTACT_ID = "003ca000003iJh6AAE"  # Contact ID for the admin where secret word will be stored
 
-# Title of the application
-st.title("Secure Request Form")
+# Function to generate a random secret word
+def generate_secret_word():
+    words = ["apple", "bird", "cat", "dog", "elephant", "fish", "grape", "hat", "ice", "jungle", "kite", "lemon", "moon", "nest", "orange", "penguin", "queen", "rain", "sun", "tree", "umbrella", "vase", "wind", "xylophone", "yarn", "zebra"]
+    return ''.join(random.sample(words, 3))
+
+# Function to retrieve the secret word from Salesforce
+def load_secret_word():
+    try:
+        contact = sf.Contact.get(CONTACT_ID)
+        return contact.get('PER_Form_Secret_Word__c'), contact.get('LastModifiedDate')
+    except Exception as e:
+        st.error(f"Failed to load secret word from Salesforce: {e}")
+        return None, None
+
+# Function to save the secret word in Salesforce
+def save_secret_word(secret_word):
+    try:
+        sf.Contact.update(CONTACT_ID, {
+            'PER_Form_Secret_Word__c': secret_word
+        })
+    except Exception as e:
+        st.error(f"Failed to save secret word to Salesforce: {e}")
+
+# Function to send email notification to the administrator
+def send_email(new_secret_word):
+    message = EmailMessage()
+    message.set_content(f"The new secret word is: {new_secret_word}")
+    message['Subject'] = 'Secret Word Updated'
+    message['From'] = SENDER_EMAIL
+    message['To'] = ADMIN_EMAIL
+
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(message)
+
+# Load current secret word from Salesforce
+current_secret_word, last_changed = load_secret_word()
+
+# If it's the first run or more than 3 months have passed, generate a new secret word
+if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:10], '%Y-%m-%d') > timedelta(days=90)):
+    new_secret_word = generate_secret_word()
+    save_secret_word(new_secret_word)  # Save new secret word in Salesforce
+    send_email(new_secret_word)  # Notify admin via email
+    current_secret_word = new_secret_word
+    st.info(f"A new secret word has been generated and saved in Salesforce.")
 
 # Prompt for the secret word
 secret_input = st.text_input("Enter the secret word to access the form:", type="password")
 
 # Check if the secret word is correct
-if secret_input == SECRET_WORD:
+if secret_input == current_secret_word:
     st.success("Secret word accepted! You may proceed with the form.")
     
     # Display the form with the specified fields

@@ -28,7 +28,7 @@ except Exception as e:
 # Email and contact details
 ADMIN_EMAIL = "jaevkim@gmail.com"
 SENDER_EMAIL = "perrequestform@gmail.com"
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+SENDER_PASSWORD = "SENDER_PASSWORD"
 CONTACT_ID = "003ca000003iJh6AAE"  # Contact ID for the admin where secret word will be stored
 
 # Function to generate a random secret word

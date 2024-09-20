@@ -55,22 +55,36 @@ def save_secret_word(secret_word):
         st.error(f"Failed to save secret word to Salesforce: {e}")
 
 # Function to send email notification to the administrator
+# Function to send email notification to the administrator using new code structure
 def send_email(new_secret_word):
+    # Create email message object
     message = EmailMessage()
     message.set_content(f"The new secret word is: {new_secret_word}")
     message['Subject'] = 'Secret Word Updated'
     message['From'] = SENDER_EMAIL
     message['To'] = ADMIN_EMAIL
 
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.send_message(message)
+    # SMTP server details
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 465  # SMTP SSL port number
+    smtp_email = SENDER_EMAIL
+    smtp_password = os.getenv("SENDER_PASSWORD")  # Using environment variable for security
+
+    # Send the email
+    try:
+        # Create an SMTP SSL connection
+        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+            server.login(smtp_email, smtp_password)
+            server.send_message(message)
+            st.success("Email sent successfully!")
+    except Exception as e:
+        st.error(f"Failed to send email. Error: {str(e)}")
 
 # Load current secret word from Salesforce
 current_secret_word, last_changed = load_secret_word()
 
 # If it's the first run or more than 3 months have passed, generate a new secret word
-if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:10], '%Y-%m-%d') > timedelta(days=90)):
+if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:10], '%Y-%m-%d') > timedelta(minutes=5)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce
     send_email(new_secret_word)  # Notify admin via email

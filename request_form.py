@@ -94,6 +94,9 @@ if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:
 # Prompt for the secret word
 secret_input = st.text_input("Enter the secret word to access the form:", type="password")
 
+st.write(f"SENDER_PASSWORD is: {os.getenv('SENDER_PASSWORD')}")
+
+
 # Check if the secret word is correct
 if secret_input == current_secret_word:
     st.success("Secret word accepted! You may proceed with the form.")

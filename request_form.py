@@ -41,7 +41,7 @@ def load_secret_word():
     try:
         contact = sf.Contact.get(CONTACT_ID)
         secret_word = contact.get('PER_Form_Secret_Word__c')
-        last_changed_date = contact.get('PER_Form_Secret_Changed_Date__c')  # Fetch the custom field for the date
+        last_changed_date = contact.get('PER_Form_Secret_Changed_Date__c')  # Fetch the custom field
         return secret_word, last_changed_date
     except Exception as e:
         st.error(f"Failed to load secret word from Salesforce: {e}")
@@ -52,7 +52,7 @@ def save_secret_word(secret_word):
     try:
         sf.Contact.update(CONTACT_ID, {
             'PER_Form_Secret_Word__c': secret_word,
-            'PER_Form_Secret_Changed_Date__c': datetime.now().date().isoformat()  # Save current date
+            'PER_Form_Secret_Changed_Date__c': datetime.now().isoformat()  # Save current date/time
         })
     except Exception as e:
         st.error(f"Failed to save secret word to Salesforce: {e}")
@@ -85,15 +85,15 @@ def send_email(new_secret_word):
 # Load current secret word and the last changed date from Salesforce
 current_secret_word, last_changed = load_secret_word()
 
-# If it's the first run or more than 3 months (90 days) have passed, generate a new secret word
-if not current_secret_word or (datetime.now().date() - datetime.strptime(last_changed, '%Y-%m-%d').date() > timedelta(minutes=1)):
+# If it's the first run or more than 3 months have passed, generate a new secret word
+if not current_secret_word or (datetime.now() - datetime.strptime(last_changed, '%Y-%m-%dT%H:%M:%S.%fZ') > timedelta(days=90)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
     send_email(new_secret_word)  # Notify admin via email
     current_secret_word = new_secret_word
     st.info(f"A new secret word has been generated and saved in Salesforce.")
 else:
-    st.info(f"Current secret word is still valid. Last changed on {last_changed}")
+    st.info(f"Current secret word is still valid. Last changed on {last_changed[:10]}")
 
 # Prompt for the secret word
 secret_input = st.text_input("Enter the secret word to access the form:", type="password")

@@ -85,7 +85,7 @@ current_secret_word, last_changed = load_secret_word()
 
 # If it's the first run or more than 3 months have passed, generate a new secret word
 # Updated: Adjusted the time comparison to 90 days (3 months)
-if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:10], '%Y-%m-%d') > timedelta(days=90)):
+if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:10], '%Y-%m-%d') > timedelta(minutes=1)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce
     send_email(new_secret_word)  # Notify admin via email

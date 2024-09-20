@@ -36,25 +36,27 @@ def generate_secret_word():
     words = ["apple", "bird", "cat", "dog", "elephant", "fish", "grape", "hat", "ice", "jungle", "kite", "lemon", "moon", "nest", "orange", "penguin", "queen", "rain", "sun", "tree", "umbrella", "vase", "wind", "xylophone", "yarn", "zebra"]
     return ''.join(random.sample(words, 3))
 
-# Function to retrieve the secret word from Salesforce
+# Function to retrieve the secret word and last changed date from Salesforce
 def load_secret_word():
     try:
         contact = sf.Contact.get(CONTACT_ID)
-        return contact.get('PER_Form_Secret_Word__c'), contact.get('LastModifiedDate')
+        secret_word = contact.get('PER_Form_Secret_Word__c')
+        last_changed_date = contact.get('PER_Form_Secret_Changed_Date__c')  # Fetch the custom field for the date
+        return secret_word, last_changed_date
     except Exception as e:
         st.error(f"Failed to load secret word from Salesforce: {e}")
         return None, None
 
-# Function to save the secret word in Salesforce
+# Function to save the secret word and update the last changed date in Salesforce
 def save_secret_word(secret_word):
     try:
         sf.Contact.update(CONTACT_ID, {
-            'PER_Form_Secret_Word__c': secret_word
+            'PER_Form_Secret_Word__c': secret_word,
+            'PER_Form_Secret_Changed_Date__c': datetime.now().date().isoformat()  # Save current date
         })
     except Exception as e:
         st.error(f"Failed to save secret word to Salesforce: {e}")
 
-# Function to send email notification to the administrator
 # Function to send email notification to the administrator using new code structure
 def send_email(new_secret_word):
     # Create email message object
@@ -80,26 +82,21 @@ def send_email(new_secret_word):
     except Exception as e:
         st.error(f"Failed to send email. Error: {str(e)}")
 
-# Load current secret word from Salesforce
+# Load current secret word and the last changed date from Salesforce
 current_secret_word, last_changed = load_secret_word()
 
-# If it's the first run or more than 3 months have passed, generate a new secret word
-# Updated: Adjusted the time comparison to 90 days (3 months)
-if not current_secret_word or (datetime.now() - datetime.strptime(last_changed[:10], '%Y-%m-%d') > timedelta(days=90)):
+# If it's the first run or more than 3 months (90 days) have passed, generate a new secret word
+if not current_secret_word or (datetime.now().date() - datetime.strptime(last_changed, '%Y-%m-%d').date() > timedelta(minutes=1)):
     new_secret_word = generate_secret_word()
-    save_secret_word(new_secret_word)  # Save new secret word in Salesforce
+    save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
     send_email(new_secret_word)  # Notify admin via email
     current_secret_word = new_secret_word
     st.info(f"A new secret word has been generated and saved in Salesforce.")
 else:
-    st.info(f"Current secret word is still valid. Last changed on {last_changed[:10]}")
-
+    st.info(f"Current secret word is still valid. Last changed on {last_changed}")
 
 # Prompt for the secret word
 secret_input = st.text_input("Enter the secret word to access the form:", type="password")
-
-st.write(f"SENDER_PASSWORD from secrets is: {st.secrets['SENDER_PASSWORD']}")
-
 
 # Check if the secret word is correct
 if secret_input == current_secret_word:

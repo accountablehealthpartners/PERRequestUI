@@ -47,6 +47,15 @@ def load_secret_word():
         st.error(f"Failed to load secret word from Salesforce: {e}")
         return None, None
 
+# Function to safely parse the datetime from Salesforce, which may or may not include microseconds
+def parse_salesforce_datetime(last_changed):
+    try:
+        # Try parsing with microseconds
+        return datetime.strptime(last_changed, '%Y-%m-%dT%H:%M:%S.%fZ')
+    except ValueError:
+        # If that fails, try without microseconds
+        return datetime.strptime(last_changed.split('.')[0] + 'Z', '%Y-%m-%dT%H:%M:%SZ')
+
 # Function to save the secret word and update the last changed date in Salesforce
 def save_secret_word(secret_word):
     try:
@@ -57,7 +66,7 @@ def save_secret_word(secret_word):
     except Exception as e:
         st.error(f"Failed to save secret word to Salesforce: {e}")
 
-# Function to send email notification to the administrator using new code structure
+# Function to send email notification to the administrator
 def send_email(new_secret_word):
     # Create email message object
     message = EmailMessage()
@@ -86,7 +95,7 @@ def send_email(new_secret_word):
 current_secret_word, last_changed = load_secret_word()
 
 # If it's the first run or more than 3 months have passed, generate a new secret word
-if not current_secret_word or (datetime.now() - datetime.strptime(last_changed, '%Y-%m-%dT%H:%M:%S.%fZ') > timedelta(days=90)):
+if not current_secret_word or (datetime.now() - parse_salesforce_datetime(last_changed) > timedelta(days=90)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
     send_email(new_secret_word)  # Notify admin via email

@@ -39,7 +39,7 @@ def generate_secret_word():
 def load_secret_word():
     try:
         contact = sf.Contact.get(CONTACT_ID)
-        secret_word = contact.get('PER_Form_Secret_Word__c')
+        secret_word = contact.get('PER_Form_Secret_Word_Encrypted__c')
         last_changed_date = contact.get('PER_Form_Secret_Changed_Date__c')  # Fetch the custom field
         return secret_word, last_changed_date
     except Exception as e:

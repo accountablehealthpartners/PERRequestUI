@@ -27,10 +27,7 @@ try:
 except Exception as e:
     st.error(f"Failed to connect to Salesforce: {e}")
 
-# Email and contact details
-ADMIN_EMAIL = "jaevkim@gmail.com"
-SENDER_EMAIL = "perrequestform@gmail.com"
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")  # Replace with your App Password
+# contact details
 CONTACT_ID = "003ca000003iJh6AAE"  # Contact ID for the admin where secret word will be stored
 
 # Function to generate a random secret word
@@ -68,67 +65,6 @@ def save_secret_word(secret_word):
     except Exception as e:
         st.error(f"Failed to save secret word to Salesforce: {e}")
 
-# Function to delete all messages from the "Sent" folder
-def delete_sent_emails():
-    try:
-        # Connect to the Gmail IMAP server
-        imap_server = imaplib.IMAP4_SSL('imap.gmail.com')
-        imap_server.login(SENDER_EMAIL, SENDER_PASSWORD)
-
-        # Select the "Sent" folder
-        imap_server.select('"[Gmail]/Sent Mail"')
-
-        # Search for all emails in the "Sent" folder
-        result, data = imap_server.search(None, 'ALL')
-
-        if result == 'OK':
-            # Get the list of email IDs to delete
-            email_ids = data[0].split()
-
-            # Mark all emails for deletion
-            for email_id in email_ids:
-                imap_server.store(email_id, '+FLAGS', '\\Deleted')
-
-            # Permanently delete all marked emails
-            imap_server.expunge()
-            st.success("Deleted all emails from the 'Sent' folder.")
-        else:
-            st.error("Failed to retrieve sent emails for deletion.")
-
-        # Logout from the IMAP server
-        imap_server.logout()
-    except Exception as e:
-        st.error(f"Failed to delete sent emails: {str(e)}")
-
-# Function to send email notification to the administrator
-def send_email(new_secret_word):
-    # Create email message object
-    message = EmailMessage()
-    message.set_content(f"The new secret word is: {new_secret_word}")
-    message['Subject'] = 'Secret Word Updated'
-    message['From'] = SENDER_EMAIL
-    message['To'] = ADMIN_EMAIL
-
-    # SMTP server details
-    smtp_server = 'smtp.gmail.com'
-    smtp_port = 465  # SMTP SSL port number
-    smtp_email = SENDER_EMAIL
-    smtp_password = os.getenv("SENDER_PASSWORD")  # Using environment variable for security
-
-    # Send the email
-    try:
-        # Create an SMTP SSL connection
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(smtp_email, smtp_password)
-            server.send_message(message)
-            st.success("Email sent successfully!")
-
-        # After sending the email, delete everything in the "Sent" folder
-        delete_sent_emails()
-
-    except Exception as e:
-        st.error(f"Failed to send email. Error: {str(e)}")
-
 # Load current secret word and the last changed date from Salesforce
 current_secret_word, last_changed = load_secret_word()
 
@@ -136,7 +72,6 @@ current_secret_word, last_changed = load_secret_word()
 if not current_secret_word or last_changed is None or (datetime.now() - parse_salesforce_datetime(last_changed) > timedelta(days=90)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
-    send_email(new_secret_word)  # Notify admin via email
     current_secret_word = new_secret_word
     st.info(f"A new secret word has been generated and saved in Salesforce.")
 else:

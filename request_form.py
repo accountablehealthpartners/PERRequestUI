@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timedelta
 import random
 
+st.set_page_config(page_title="Request Form", page_icon="📝")
 
 # Salesforce credentials
 SF_USERNAME = os.getenv("SF_USERNAME")

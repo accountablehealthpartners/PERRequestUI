@@ -1,3 +1,2 @@
 streamlit
 simple-salesforce
-threading

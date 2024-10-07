@@ -24,7 +24,6 @@ try:
         domain=SF_DOMAIN
     )
     sf = Salesforce(session_id=session_id, instance=instance)
-    st.success("Connected to Salesforce successfully!")
 except Exception as e:
     st.error(f"Failed to connect to Salesforce: {e}")
 

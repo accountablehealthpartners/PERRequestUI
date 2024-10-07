@@ -59,11 +59,28 @@ def parse_salesforce_datetime(last_changed):
 def save_secret_word(secret_word):
     try:
         sf.Contact.update(CONTACT_ID, {
+            'PER_Form_Secret_Word__c': secret_word,  # Save the plain-text secret word temporarily
             'PER_Form_Secret_Word_Encrypted__c': secret_word,
             'PER_Form_Secret_Changed_Date__c': datetime.now().isoformat()  # Save current date/time
         })
     except Exception as e:
         st.error(f"Failed to save secret word to Salesforce: {e}")
+
+# Function to remove the secret word after 1 minute
+def remove_secret_word_after_delay():
+    # Wait for 60 seconds (1 minute)
+    threading.Timer(60.0, remove_secret_word).start()
+
+# Function to remove the secret word from PER_Form_Secret_Word__c
+def remove_secret_word():
+    try:
+        # Remove the plain-text secret word after 1 minute
+        sf.Contact.update(CONTACT_ID, {
+            'PER_Form_Secret_Word__c': None  # Clear the plain-text secret word
+        })
+    except Exception as e:
+        st.error(f"Failed to remove secret word from Salesforce: {e}")
+
 
 # Load current secret word and the last changed date from Salesforce
 current_secret_word, last_changed = load_secret_word()
@@ -72,6 +89,7 @@ current_secret_word, last_changed = load_secret_word()
 if not current_secret_word or last_changed is None or (datetime.now() - parse_salesforce_datetime(last_changed) > timedelta(minutes=15)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
+    remove_secret_word_after_delay()
     current_secret_word = new_secret_word
 
 # Prompt for the secret word

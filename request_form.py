@@ -93,12 +93,22 @@ if not current_secret_word or last_changed is None or (datetime.now() - parse_sa
     remove_secret_word_after_delay()
     current_secret_word = new_secret_word
 
-# Prompt for the secret word
-secret_input = st.text_input("Enter the secret word to access the form:", type="password")
+# State to track whether the passkey has been accepted
+passkey_accepted = st.session_state.get("passkey_accepted", False)
 
-# Check if the secret word is correct
-if secret_input == current_secret_word:
-    st.success("Secret word accepted! You may proceed with the form.")
+# If passkey hasn't been accepted, show the input box
+if not passkey_accepted:
+    secret_input = st.text_input("Enter the secret word to access the form:", type="password")
+    
+    # Check if the secret word is correct
+    if secret_input == current_secret_word:
+        st.session_state["passkey_accepted"] = True
+        st.success("Secret word accepted!")
+    elif secret_input:
+        st.error("Incorrect secret word. Please try again.")
+# If passkey is accepted, hide the passkey input and show the form
+if st.session_state.get("passkey_accepted"):
+    st.write("All fields are required. If you do not have an answer for a field, please enter N/A.")
     
     # Display the form with the specified fields
     with st.form(key='request_form'):
@@ -122,76 +132,81 @@ if secret_input == current_secret_word:
         submit_button = st.form_submit_button(label='Submit')
 
         if submit_button:
-            try:
-                # Query to find the Contact ID based on First Name and Last Name
-                contact_query = f"SELECT Id, AccountId FROM Contact WHERE FirstName = '{first_name}' AND LastName = '{last_name}' LIMIT 1"
-                contact_result = sf.query(contact_query)
-
-                # Initialize ContactId and AccountId as None
-                contact_id = None
-                account_id = None
-
-                # Check if a matching contact is found
-                if contact_result['totalSize'] > 0:
-                    contact_id = contact_result['records'][0]['Id']
-                    account_id = contact_result['records'][0]['AccountId']
+            # Check if any fields are left blank
+            fields = [first_name, middle_name, last_name, preferred_email, job_title, practice_name, practice_address, supervisor_name, reasoning]
+            if any(field.strip() == "" for field in fields):
+                st.error("All fields are required. Please enter N/A if a field does not apply.")
+            else:
+                try:
+                    # Query to find the Contact ID based on First Name and Last Name
+                    contact_query = f"SELECT Id, AccountId FROM Contact WHERE FirstName = '{first_name}' AND LastName = '{last_name}' LIMIT 1"
+                    contact_result = sf.query(contact_query)
+    
+                    # Initialize ContactId and AccountId as None
+                    contact_id = None
+                    account_id = None
+    
+                    # Check if a matching contact is found
+                    if contact_result['totalSize'] > 0:
+                        contact_id = contact_result['records'][0]['Id']
+                        account_id = contact_result['records'][0]['AccountId']
+                        
+                    # Create a dictionary with the Case fields
+                    case_data = {
+                        'RecordTypeId': '012Dn000000FGWvIAO',
+                        'Team__c': 'Information Services',
+                        'Case_Type__c': 'System Access Request',
+                        'Case_Type_Specific__c': 'PER',
+                        'Estimated_Start_Date__c': datetime.now().date().isoformat(),
+                        'System__c': 'PER',
+                        'Severity__c': 'Individual',
+                        'Effort__c': 'Low',
+                        'Status': 'New',
+                        'Priority': 'Medium',
+                        'Reason': 'New problem',
+                        'Origin': 'Email',
+                        'Subject': f"{first_name} {last_name} PER Request Form",
+                        'Description': (
+                            f"First Name: {first_name}\n"
+                            f"Middle Name: {middle_name}\n"
+                            f"Last Name: {last_name}\n"
+                            f"Preferred Email Address: {preferred_email}\n"
+                            f"Job Title: {job_title}\n"
+                            f"Practice Name: {practice_name}\n"
+                            f"Practice Address: {practice_address}\n"
+                            f"Supervisor Full Name: {supervisor_name}\n"
+                            f"Reasoning behind Request: {reasoning}\n"
+                            f"Already have URMC account: {has_urmc_account}"
+                        )
+                    }
+    
+                    # Add ContactId and AccountId to case_data only if they are not None
+                    if contact_id:
+                        case_data['ContactId'] = contact_id
+                    if account_id:
+                        case_data['AccountId'] = account_id
+    
+                    # Create the Case object in Salesforce
+                    case = sf.Case.create(case_data)
                     
-                # Create a dictionary with the Case fields
-                case_data = {
-                    'RecordTypeId': '012Dn000000FGWvIAO',
-                    'Team__c': 'Information Services',
-                    'Case_Type__c': 'System Access Request',
-                    'Case_Type_Specific__c': 'PER',
-                    'Estimated_Start_Date__c': datetime.now().date().isoformat(),
-                    'System__c': 'PER',
-                    'Severity__c': 'Individual',
-                    'Effort__c': 'Low',
-                    'Status': 'New',
-                    'Priority': 'Medium',
-                    'Reason': 'New problem',
-                    'Origin': 'Email',
-                    'Subject': f"{first_name} {last_name} PER Request Form",
-                    'Description': (
-                        f"First Name: {first_name}\n"
-                        f"Middle Name: {middle_name}\n"
-                        f"Last Name: {last_name}\n"
-                        f"Preferred Email Address: {preferred_email}\n"
-                        f"Job Title: {job_title}\n"
-                        f"Practice Name: {practice_name}\n"
-                        f"Practice Address: {practice_address}\n"
-                        f"Supervisor Full Name: {supervisor_name}\n"
-                        f"Reasoning behind Request: {reasoning}\n"
-                        f"Already have URMC account: {has_urmc_account}"
-                    )
-                }
-
-                # Add ContactId and AccountId to case_data only if they are not None
-                if contact_id:
-                    case_data['ContactId'] = contact_id
-                if account_id:
-                    case_data['AccountId'] = account_id
-
-                # Create the Case object in Salesforce
-                case = sf.Case.create(case_data)
-                
-                st.success("Form submitted successfully and Case created in Salesforce!")
-                # Display submitted data for review
-                st.write("Here's what you've submitted:")
-                st.write({
-                    "First Name": first_name,
-                    "Middle Name": middle_name,
-                    "Last Name": last_name,
-                    "Preferred Email Address": preferred_email,
-                    "Job Title": job_title,
-                    "Practice Name": practice_name,
-                    "Practice Address": practice_address,
-                    "Supervisor Full Name": supervisor_name,
-                    "Reasoning behind Request": reasoning,
-                    "Has URMC account": has_urmc_account
-                })
-            except Exception as e:
-                st.error(f"Failed to create Case in Salesforce: {e}")
-
-else:
-    if secret_input:
-        st.error("Incorrect secret word. Please try again.")
+                    st.success("Form submitted successfully and Case created in Salesforce!")
+                    # Display submitted data for review
+                    st.write("Here's what you've submitted:")
+                    st.write({
+                        "First Name": first_name,
+                        "Middle Name": middle_name,
+                        "Last Name": last_name,
+                        "Preferred Email Address": preferred_email,
+                        "Job Title": job_title,
+                        "Practice Name": practice_name,
+                        "Practice Address": practice_address,
+                        "Supervisor Full Name": supervisor_name,
+                        "Reasoning behind Request": reasoning,
+                        "Has URMC account": has_urmc_account
+                    })
+                except Exception as e:
+                    st.error(f"Failed to create Case in Salesforce: {e}")
+    
+    else:
+        if secret_input:
+            st.error("Incorrect secret word. Please try again.")

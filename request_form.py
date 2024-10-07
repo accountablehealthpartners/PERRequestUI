@@ -206,7 +206,3 @@ if st.session_state.get("passkey_accepted"):
                     })
                 except Exception as e:
                     st.error(f"Failed to create Case in Salesforce: {e}")
-    
-    else:
-        if secret_input:
-            st.error("Incorrect secret word. Please try again.")

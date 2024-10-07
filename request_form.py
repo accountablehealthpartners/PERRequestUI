@@ -74,9 +74,6 @@ if not current_secret_word or last_changed is None or (datetime.now() - parse_sa
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
     current_secret_word = new_secret_word
-    st.info(f"A new secret word has been generated and saved in Salesforce.")
-else:
-    st.info(f"Current secret word is still valid. Last changed on {last_changed[:10]}")
 
 # Prompt for the secret word
 secret_input = st.text_input("Enter the secret word to access the form:", type="password")

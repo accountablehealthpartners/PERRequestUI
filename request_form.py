@@ -10,6 +10,9 @@ import threading
 
 st.set_page_config(page_title="Request Form", page_icon="📝")
 
+if "passkey_accepted" not in st.session_state:
+    st.session_state["passkey_accepted"] = False
+
 # Salesforce credentials
 SF_USERNAME = os.getenv("SF_USERNAME")
 SF_PASSWORD = os.getenv("SF_PASSWORD")

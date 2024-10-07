@@ -73,7 +73,7 @@ def save_secret_word(secret_word):
 current_secret_word, last_changed = load_secret_word()
 
 # If it's the first run or more than 3 months have passed, generate a new secret word
-if not current_secret_word or last_changed is None or (datetime.now() - parse_salesforce_datetime(last_changed) > timedelta(minutes=3)):
+if not current_secret_word or last_changed is None or (datetime.now() - parse_salesforce_datetime(last_changed) > timedelta(days=90)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
     current_secret_word = new_secret_word
@@ -149,7 +149,8 @@ if st.session_state.get("passkey_accepted"):
                         'Status': 'New',
                         'Priority': 'Medium',
                         'Reason': 'New problem',
-                        'Origin': 'Email',
+                        'Origin': 'Web',
+                        'SuppliedName': 'PER Web to Case Form',
                         'Subject': f"{first_name} {last_name} PER Request Form",
                         'Description': (
                             f"First Name: {first_name}\n"

@@ -73,7 +73,7 @@ def save_secret_word(secret_word):
 current_secret_word, last_changed = load_secret_word()
 
 # If it's the first run or more than 3 months have passed, generate a new secret word
-if not current_secret_word or last_changed is None or (datetime.now() - parse_salesforce_datetime(last_changed) > timedelta(minutes=8)):
+if not current_secret_word or last_changed is None or (datetime.now() - parse_salesforce_datetime(last_changed) > timedelta(minutes=3)):
     new_secret_word = generate_secret_word()
     save_secret_word(new_secret_word)  # Save new secret word in Salesforce and update last changed date
     current_secret_word = new_secret_word
